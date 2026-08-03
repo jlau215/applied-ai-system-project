@@ -2,7 +2,7 @@
 
 ## Title and Summary
 
-**Original project (Modules 1-3): PawPal+ — Pet Care Scheduler.** PawPal+ is a Streamlit app that helps pet owners plan and manage daily care tasks across multiple pets. Its original goals were to track tasks (walks, feeding, meds, grooming, enrichment, vet appointments) per pet, fit them into an owner's available daily time budget using priority- and requirement-aware scheduling, and detect time conflicts before the day starts — all without needing any AI.
+**PawPal+ — Pet Care Scheduler.** PawPal+ is a Streamlit app that helps pet owners plan and manage daily care tasks across multiple pets. Its original goals were to track tasks (walks, feeding, meds, grooming, enrichment, vet appointments) per pet, fit them into an owner's available daily time budget using priority- and requirement-aware scheduling, and detect time conflicts before the day starts — all without needing any AI.
 
 This module adds an **AI Assistant** on top of that scheduler: a Retrieval-Augmented Generation (RAG) feature that answers open-ended pet-care questions ("best food for a puppy," "ideal walking schedule," "how do I use this app") by retrieving relevant material from a small curated knowledge base and having a Groq-hosted Llama model compose a grounded answer from it. It matters because a scheduler alone tells an owner *when* to do things, not *what's actually right* for their pet — the AI Assistant fills that gap without requiring the owner to leave the app or trust an ungrounded chatbot.
 

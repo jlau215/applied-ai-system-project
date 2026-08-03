@@ -189,6 +189,19 @@ pytest         # run all tests
 pytest --cov   # run with coverage
 ```
 
+Real captured output from `pytest -v` (not retyped — see [`execution_evidence.md`](execution_evidence.md) for the full run plus a genuine excerpt of `logs/pawpal_ai.log`, including the real Gemini 404/429 failures hit during development):
+
+```
+============================= test session starts =============================
+platform win32 -- Python 3.13.14, pytest-9.1.1, pluggy-1.6.0
+collected 59 items
+
+tests/test_pawpal.py ..................................... [ 64%]
+tests/test_rag.py ....................                      [100%]
+
+============================= 59 passed in 0.29s ==============================
+```
+
 ---
 
 ## Reference: CLI Demo Walkthrough

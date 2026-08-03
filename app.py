@@ -1,8 +1,13 @@
+import os
 import re
 import pandas as pd
 import streamlit as st
 from datetime import date, time
+from dotenv import load_dotenv
 from pawpal_system import Owner, Pet, Task, Scheduler
+import rag_assistant
+
+load_dotenv()
 
 st.set_page_config(page_title="PawPal+", page_icon="🐾", layout="centered")
 st.title("🐾 PawPal+")
@@ -18,6 +23,8 @@ if "plan" not in st.session_state:
     st.session_state.plan = []
 if "plan_conflicts" not in st.session_state:
     st.session_state.plan_conflicts = []
+if "ai_history" not in st.session_state:
+    st.session_state.ai_history = []  # list of dicts: question, answer, sources, mode, feedback
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 PRIORITY_MAP    = {"Low": 1, "Medium": 2, "High": 3}
@@ -347,3 +354,71 @@ else:
             else:
                 st.success("✅ Task marked complete.")
             st.info("Regenerate the schedule in Section 3 to reflect the update.")
+
+st.divider()
+
+# ── Section 5: AI Assistant (RAG) ─────────────────────────────────────────────
+st.subheader("5. AI Assistant 🤖")
+st.caption("Ask about pet food, care schedules, or how to use PawPal+.")
+
+mode_label = st.radio(
+    "Answer source",
+    ["Local knowledge base (reliable)", "Live web search (Groq compound, ~1 query/min)"],
+    key="ai_mode",
+    horizontal=True,
+)
+mode = "web" if mode_label.startswith("Live web") else "local"
+
+question = st.text_input(
+    "Ask a question",
+    placeholder="e.g. What are the best food products for a Labrador puppy?",
+    key="ai_question",
+)
+
+if st.button("Ask"):
+    if not os.environ.get("GROQ_API_KEY"):
+        st.error(
+            "GROQ_API_KEY is not set. Add it to a `.env` file "
+            "(see `.env.example`) and restart the app."
+        )
+    else:
+        spinner_msg = "Searching the web..." if mode == "web" else "Searching and thinking..."
+        with st.spinner(spinner_msg):
+            pet_context = rag_assistant.build_pet_context(st.session_state.owner)
+            result = rag_assistant.ask(question, pet_context=pet_context, mode=mode)
+
+        if result.ok:
+            st.session_state.ai_history.insert(0, {
+                "question": question,
+                "answer": result.answer,
+                "sources": result.sources,
+                "mode": mode,
+                "feedback": None,
+            })
+        else:
+            st.error(result.error)
+
+for i, entry in enumerate(st.session_state.ai_history):
+    with st.container(border=True):
+        mode_badge = "🌐 Live web" if entry.get("mode") == "web" else "📚 Local knowledge base"
+        st.caption(mode_badge)
+        st.markdown(f"**Q: {entry['question']}**")
+        st.markdown(entry["answer"])
+        if entry["sources"]:
+            label = "Web sources" if entry.get("mode") == "web" else "Knowledge base sections used"
+            with st.expander(f"{label} ({len(entry['sources'])})"):
+                for src in entry["sources"]:
+                    st.markdown(f"- {src}")
+
+        fb_col1, fb_col2, fb_col3 = st.columns([1, 1, 6])
+        with fb_col1:
+            if st.button("👍", key=f"up_{i}"):
+                rag_assistant.log_feedback(entry["question"], True)
+                st.session_state.ai_history[i]["feedback"] = "up"
+        with fb_col2:
+            if st.button("👎", key=f"down_{i}"):
+                rag_assistant.log_feedback(entry["question"], False)
+                st.session_state.ai_history[i]["feedback"] = "down"
+        with fb_col3:
+            if entry["feedback"]:
+                st.caption(f"Feedback recorded: {entry['feedback']}")

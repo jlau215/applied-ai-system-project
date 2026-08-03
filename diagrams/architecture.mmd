@@ -1,0 +1,47 @@
+flowchart TD
+    subgraph UI["Streamlit UI (app.py)"]
+        U["User types question\n+ picks mode:\nLocal KB / Live web"]
+        FB["Feedback buttons\n👍 / 👎"]
+        OUT["Rendered answer\n+ source list + mode badge"]
+    end
+
+    subgraph CTX["Context Builder"]
+        C1["Pull owner/pets/schedule\nfrom st.session_state"]
+    end
+
+    subgraph GUARD["Guardrails (rag_assistant.py)"]
+        G1["Validate input\n(non-empty, length cap)"]
+        G2["try/except wrapper\n(+ distinct rate-limit message)"]
+        G3["Logger\n(logs/pawpal_ai.log)"]
+    end
+
+    subgraph RAGLOCAL["RAG Core -- Local mode (default)"]
+        RL["Retriever\nknowledge_base/retriever.py\nlocal TF-IDF search over\nknowledge_base/docs/*.md"]
+        AL["Agent\nGroq llama-3.3-70b-versatile\nsynthesizes query + retrieved chunks\n+ pet context into one grounded answer"]
+    end
+
+    subgraph RAGWEB["RAG Core -- Web mode (optional)"]
+        AW["Agent + Retriever combined\nGroq compound-beta-mini\nsearches the live web itself,\ngrounds answer in results\n(~1 query/min free-tier limit)"]
+    end
+
+    subgraph EVAL["Evaluation / Human Check"]
+        T["Automated tests\ntests/test_rag.py\n(mocked Groq, both modes,\nrate-limit + guardrail cases)"]
+        H["Human review\nfeedback buttons -> logged\nfor manual spot-check"]
+    end
+
+    U --> G1
+    G1 -- invalid --> OUT
+    G1 -- valid --> C1
+    C1 --> G2
+    G2 -- mode=local --> RL
+    RL -- top-k chunks --> AL
+    AL -- answer + KB citations --> OUT
+    G2 -- mode=web --> AW
+    AW -- answer + web citations --> OUT
+    G2 -- exception / 429 --> OUT
+    G2 -.-> G3
+    OUT --> FB
+    FB -.-> H
+    T -.->|verifies before deploy| GUARD
+    T -.->|verifies relevance| RL
+    T -.->|verifies source extraction| AW
